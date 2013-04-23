@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link href='https://fonts.googleapis.com/css?family=Architects+Daughter' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <title>Adam by massie</title>
+  </head>
+
+  <body>
+    <header>
+      <div class="inner">
+        <h1>Adam</h1>
+        <h2>Avro Datafile for Alignment and Mapping</h2>
+        <a href="https://github.com/massie/adam" class="button"><small>View project on</small>GitHub</a>
+      </div>
+    </header>
+
+    <div id="content-wrapper">
+      <div class="inner clearfix">
+        <section id="main-content">
+          <h1>ADAM</h1>
+
+<p><em><a href="http://avro.apache.org/">Avro</a> Datafile for Alignment/Mapping (ADAM)</em></p>
+
+<h1>Introduction</h1>
+
+<p>ADAM is a file format as well as a light-weight framework for doing Genome Analysis.</p>
+
+<h2>The ADAM framework</h2>
+
+<p>ADAM is written to be modular. To create a new module, simply extend the 
+<a href="src/main/java/edu/berkeley/amplab/adam/modules/AdamModule.java">AdamModule</a> abstract
+class and define your module options using <a href="http://args4j.kohsuke.org/">args4j</a>. The
+<a href="src/main/java/edu/berkeley/amplab/adam/modules/CountReads.java">CountReads</a> class
+is a good simple example to look at. Add your module to the <code>AdamMain</code> class and it
+will appear in the module list. In the future, ADAM will support dynamically loaded
+modules.</p>
+
+<h2>ADAM File Format</h2>
+
+<p>The ADAM file format is an improvement on the SAM or BAM file formats in a number of ways:</p>
+
+<ol>
+<li>The ADAM file format is easily splittable for distributed processing with Hadoop</li>
+<li>The ADAM file format is completely self-contained. Each read includes the reference
+information.</li>
+<li>The ADAM file format is <a href="src/main/resources/avro/protocol.avdl">defined in the Avro IDL</a> 
+that makes it easy to create implementations in many different computer languages. This schema
+is stored in the header of each ADAM file to ensure the data is self-descriptive.</li>
+<li>The ADAM file format is compact. It holds more information about each read (e.g. reference
+name, reference length) while still being about the same size as a BAM file. You can, of course, increase
+the compression level to make an ADAM file smaller than a BAM file at the cost of encoding time.</li>
+<li>The ADAM file has all the information needed to encode the data later as a SAM/BAM file if needed.
+The entire SAM header is stored in the Avro meta-data with key <code>sam.header</code>.</li>
+<li>The ADAM file format can be viewed in human-readable form as JSON using Avro tools</li>
+</ol><h1>Getting Started</h1>
+
+<h2>Installation</h2>
+
+<p>You will need to have <a href="http://maven.apache.org/">Maven</a> installed in order to build this project. 
+You will need to have <a href="http://hadoop.apache.org/">Hadoop</a> or 
+<a href="http://www.cloudera.com/content/cloudera/en/products/cdh.html">CDH</a> installed in order to run it.</p>
+
+<pre><code>$ git clone git@github.com:massie/adam.git
+$ cd adam
+$ mvn package
+</code></pre>
+
+<p>Maven will create a self-executing jar, e.g. adam-X.Y.jar, in the project root that is ready to be 
+used with Hadoop.</p>
+
+<h2>Running ADAM</h2>
+
+<p>To see all the available ADAM modules, run the following command:</p>
+
+<pre><code>$ bin/hadoop jar adam-X.Y.jar
+</code></pre>
+
+<p>You will receive a listing of all modules and how to launch them. The commandline syntax to
+run a module is:</p>
+
+<pre><code>$ bin/hadoop jar adam-X.Y.jar [generic Hadoop options] moduleName [module options]
+</code></pre>
+
+<p>For example, let's say we wanted to convert a SAM/BAM file to an ADAM file and upload it on-the-fly, you
+would use a commandline similar to the following:</p>
+
+<pre><code>$ bin/hadoop jar /workspace/adam/adam-0.1-SNAPSHOT.jar \
+-conf ~/.whirr/testcluster/hadoop-site.xml \
+convert -input NA12878_chr20.bam -output /user/matt/NA12878_chr20.avro
+</code></pre>
+
+<p>This will convert and <code>NA12878_chr20.bam</code> file and send it to <code>/user/matt/NA12878_chr20.avro</code> directly.
+To see all the options for the <code>convert</code> module, run the it without any options, e.g.</p>
+
+<pre><code>$ bin/hadoop jar adam-X.Y.jar convert
+</code></pre>
+
+<h2>A step-by-step example</h2>
+
+<p>This example will show you how to convert a BAM file to an ADAM file and then count the number of reads.</p>
+
+<p>First, we need to convert the BAM file to an ADAM file and upload it our Hadoop cluster.</p>
+
+<pre><code>$ bin/hadoop jar /workspace/adam/adam-0.1-SNAPSHOT.jar \
+  -conf ~/.whirr/testcluster/hadoop-site.xml \
+  convert -input NA12878_chr20.bam -output /user/matt/NA12878_chr20.avro
+</code></pre>
+
+<p>Note that you can also use the <code>HADOOP_CONF_DIR</code> variable if you like instead of the <code>-config</code> generic option.</p>
+
+<p>ADAM will provide feedback about the reference being converted as well as the locus. When it finishes,
+you should see a message similar to <code>X secs to convert Y reads</code>.</p>
+
+<p>Now that your ADAM file stored in Hadoop, you can run analysis on it. Let's count the number
+of reads per reference in the ADAM file using the <code>count_reads</code> module.</p>
+
+<pre><code>$ bin/hadoop jar /workspace/adam/adam-0.1-SNAPSHOT.jar  \
+-conf ~/.whirr/testcluster/hadoop-site.xml \
+count_reads -input /user/matt/NA12878_chr20.avro -output /user/matt/results
+</code></pre>
+
+<p>The <code>results</code> directory will contain the output of the reducer, e.g.</p>
+
+<pre><code>$ bin/hadoop fs -ls /user/matt/results
+/user/matt/results/_SUCCESS
+/user/matt/results/part-00000.avro
+</code></pre>
+
+<p>Let's look at the content of the results.</p>
+
+<pre><code>$ bin/hadoop fs -get /user/matt/results/part-00000.avro .
+$ avrotools tojson /tmp/results/part-00000.avro 
+{"key":"chr20","value":51554029}
+</code></pre>
+
+<p>This ADAM file had 51554029 reads on a single reference <code>chr20</code> (chromosome 20). Note that <code>avrotools</code> is
+included with the <a href="http://avro.apache.org/">Apache Avro</a> distribution.</p>
+
+<p>The results are stored as an Avro file to make it easy to use as input to another job.</p>
+
+<h1>License</h1>
+
+<p>ADAM is released under an <a href="LICENSE.txt">Apache 2.0 license</a>.</p>
+
+<h1>Future Work</h1>
+
+<p>If you're interested in helping with this project, here are things to do. Feel free to fork away and send
+me a pull request.</p>
+
+<ul>
+<li>Add ability to run GATK walkers inside modules (I have a good idea how to do this. Protyping now.).</li>
+<li>Write tests </li>
+<li>Support dynamically loaded modules</li>
+<li>Possibly support side-loading reference information</li>
+<li>Processing of optional attributes</li>
+</ul><h1>Support</h1>
+
+<p>Feel free to contact me directly if you have any questions about ADAM. My email address is <code>massie@cs.berkeley.edu</code>.</p>
+        </section>
+
+        <aside id="sidebar">
+          <a href="https://github.com/massie/adam/zipball/master" class="button">
+            <small>Download</small>
+            .zip file
+          </a>
+          <a href="https://github.com/massie/adam/tarball/master" class="button">
+            <small>Download</small>
+            .tar.gz file
+          </a>
+
+          <p class="repo-owner"><a href="https://github.com/massie/adam"></a> is maintained by <a href="https://github.com/massie">massie</a>.</p>
+
+          <p>This page was generated by <a href="pages.github.com">GitHub Pages</a> using the Architect theme by <a href="http://twitter.com/jasonlong">Jason Long</a>.</p>
+        </aside>
+      </div>
+    </div>
+
+  
+  </body>
+</html>
