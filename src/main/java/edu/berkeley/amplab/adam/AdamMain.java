@@ -19,6 +19,7 @@ package edu.berkeley.amplab.adam;
 import edu.berkeley.amplab.adam.modules.AdamModule;
 import edu.berkeley.amplab.adam.modules.ConfigurationPrinter;
 import edu.berkeley.amplab.adam.modules.ConvertFile;
+import edu.berkeley.amplab.adam.modules.ConvertFilesMR;
 import edu.berkeley.amplab.adam.modules.CountReads;
 import org.apache.hadoop.util.GenericOptionsParser;
 import org.apache.hadoop.util.ToolRunner;
@@ -38,6 +39,7 @@ public class AdamMain {
     MODULES.add(new ConvertFile());
     MODULES.add(new ConfigurationPrinter());
     MODULES.add(new CountReads());
+    MODULES.add(new ConvertFilesMR());
   }
 
   private static void printHelpAndExit() {
